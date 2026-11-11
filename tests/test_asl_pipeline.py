@@ -8,7 +8,7 @@ from asl_mri.phantom import DigitalSheppLoganASLPhantom, generate_multi_ti_datas
 
 
 def test_buxton_forward_signal_invariance():
-    """Verify Buxton GKM signal increases monotonically during bolus inflow and decays after."""
+    """Verify Buxton GKM signal increases during bolus inflow and decays after peak delivery."""
     timing = ASLTimingParams(tau=1.8, t1_blood=1.65, alpha=0.85)
     model = BuxtonModel(timing=timing)
     att = 1.0
@@ -19,17 +19,19 @@ def test_buxton_forward_signal_invariance():
     sig_pre = model.delta_m_pcasl(pld_pre, cbf, att)
     assert sig_pre == 0.0
     
-    # During bolus arrival
+    # During bolus arrival: signal accumulates
     pld_mid1 = 1.2
-    pld_mid2 = 1.8
+    pld_mid2 = 2.5  # near ATT + tau (1.0 + 1.8 = 2.8)
     sig_mid1 = model.delta_m_pcasl(pld_mid1, cbf, att)
     sig_mid2 = model.delta_m_pcasl(pld_mid2, cbf, att)
     assert sig_mid2 > sig_mid1 > 0.0
     
-    # After bolus completion (PLD > ATT + tau)
-    pld_late = 3.5
-    sig_late = model.delta_m_pcasl(pld_late, cbf, att)
-    assert 0.0 < sig_late < sig_mid2
+    # After bolus completion (PLD > ATT + tau = 2.8s)
+    pld_post1 = 3.0
+    pld_post2 = 4.0
+    sig_post1 = model.delta_m_pcasl(pld_post1, cbf, att)
+    sig_post2 = model.delta_m_pcasl(pld_post2, cbf, att)
+    assert sig_post1 > sig_post2 > 0.0  # Decays monotonically due to T1 relaxation
 
 
 def test_single_delay_cbf_reconstruction():
